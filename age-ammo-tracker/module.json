@@ -23,6 +23,6 @@
   "esmodules": [
     "scripts/age-ammo-tracker.js"
   ],
-  "manifest": "https://github.com/H4yn3x/age-ammo-tracker/releases/latest/download/module.json",
+  "manifest": "https://raw.githubusercontent.com/H4yn3x/Ammo-Tracker/refs/heads/main/age-ammo-tracker/module.json",
   "download": "https://github.com/H4yn3x/age-ammo-tracker/releases/latest/download/age-ammo-tracker.zip"
 }
