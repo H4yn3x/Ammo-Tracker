@@ -2,7 +2,7 @@
   "id": "age-ammo-tracker",
   "title": "AGE Resource Tracker",
   "description": "Rastreamento automático de munição, comida, água e recursos para o AGE System. Subtrai munição ao atacar, consome provisões em descansos, e recupera munição ao fim do combate.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "compatibility": {
     "minimum": "12",
     "verified": "13"
@@ -23,6 +23,6 @@
   "esmodules": [
     "scripts/age-ammo-tracker.js"
   ],
-  "manifest": "https://raw.githubusercontent.com/H4yn3x/Ammo-Tracker/refs/heads/main/module.json",
-  "download": "https://github.com/H4yn3x/Ammo-Tracker/archive/refs/tags/2.0.zip"
+  "manifest": "https://raw.githubusercontent.com/H4yn3x/age-ammo-tracker/main/module.json",
+  "download": "https://github.com/H4yn3x/age-ammo-tracker/releases/download/2.1.0/age-ammo-tracker.zip"
 }
