@@ -1,30 +1,29 @@
 /**
- * AGE Ammo & Resource Tracker
+ * AGE Ammo & Resource Tracker v1.2
  * Módulo para Foundry VTT + AGE System (VkDolea)
- * 
- * Permite vincular itens consumíveis (flechas, balas, etc.) a armas.
- * Quando o jogador faz uma rolagem de ataque com a arma, o módulo
- * automaticamente subtrai 1 da quantidade do item vinculado.
- * 
- * COMO USAR:
- * 1. Abra a ficha de uma arma (weapon) de um personagem
- * 2. Clique no botão "🏹 Munição" no cabeçalho da ficha
- * 3. Selecione qual item do inventário é a munição dessa arma
- * 4. Pronto! A cada ataque com essa arma, 1 unidade será subtraída
  */
 
 const MODULE_ID = "age-ammo-tracker";
 const FLAG_AMMO_ID = "linkedAmmoId";
 const FLAG_AMMO_NAME = "linkedAmmoName";
-
-// Tipos de rolagem que consomem munição (do config.js do AGE System)
 const ATTACK_ROLL_TYPES = ["attack", "meleeAttack", "rangedAttack", "stuntAttack"];
 
-// Mude para true para ver logs no console do navegador (F12)
-const DEBUG = false;
+// ════════════════════════════════════════
+// MODO DEBUG VISUAL
+// Mude para true para ver notificações na tela do Foundry a cada passo.
+// Isso ajuda a identificar onde o fluxo está quebrando.
+// LEMBRE DE VOLTAR PARA false DEPOIS DE TESTAR!
+// ════════════════════════════════════════
+const DEBUG = true;
 
 function log(...args) {
-  if (DEBUG) console.log(`[${MODULE_ID}]`, ...args);
+  console.log(`[${MODULE_ID}]`, ...args);
+}
+function debugNotify(msg) {
+  if (DEBUG) {
+    ui.notifications?.info(`[Ammo Debug] ${msg}`, { permanent: false });
+    console.log(`[${MODULE_ID}] DEBUG:`, msg);
+  }
 }
 
 // ============================================================
@@ -32,7 +31,7 @@ function log(...args) {
 // ============================================================
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | Inicializando AGE Ammo & Resource Tracker v1.1`);
+  console.log(`${MODULE_ID} | Inicializando AGE Ammo & Resource Tracker v1.2`);
 
   game.settings.register(MODULE_ID, "enabled", {
     name: "Ativar Rastreamento de Munição",
@@ -63,7 +62,8 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
-  console.log(`${MODULE_ID} | AGE Ammo & Resource Tracker pronto!`);
+  console.log(`${MODULE_ID} | AGE Ammo & Resource Tracker v1.2 pronto!`);
+  if (DEBUG) ui.notifications.info("🏹 AGE Ammo Tracker: modo DEBUG ativo — notificações visíveis a cada passo.", { permanent: true });
 });
 
 // ============================================================
@@ -85,7 +85,7 @@ Hooks.on("getItemSheetHeaderButtons", (sheet, buttons) => {
 });
 
 // ============================================================
-// DIÁLOGO DE VINCULAÇÃO DE MUNIÇÃO
+// DIÁLOGO DE VINCULAÇÃO
 // ============================================================
 
 async function openAmmoLinkDialog(weapon) {
@@ -95,16 +95,12 @@ async function openAmmoLinkDialog(weapon) {
     return;
   }
 
-  // Buscar itens candidatos a munição (equipamentos e outras armas)
   const candidateItems = actor.items.filter((i) => {
     return (i.type === "equipment" || i.type === "weapon") && i.id !== weapon.id;
   });
 
   if (candidateItems.length === 0) {
-    ui.notifications.warn(
-      "Este personagem não tem itens no inventário para vincular como munição. " +
-      "Adicione itens do tipo 'General Equipment' primeiro."
-    );
+    ui.notifications.warn("Nenhum item para vincular. Adicione 'General Equipment' ao personagem.");
     return;
   }
 
@@ -122,25 +118,22 @@ async function openAmmoLinkDialog(weapon) {
     ? `<p style="margin-bottom:8px; color:#4a7; font-weight:bold;">Munição atual: ${currentAmmoName}</p>`
     : `<p style="margin-bottom:8px; color:#888;">Nenhuma munição vinculada.</p>`;
 
-  const content = `
-    <form>
-      ${currentInfo}
-      <div class="form-group">
-        <label>Selecione o item de munição:</label>
-        <select id="ammo-select" style="width:100%; margin-top:4px; padding:4px;">
-          ${optionsHtml}
-        </select>
-      </div>
-      <p style="font-size:11px; color:#888; margin-top:8px;">
-        A cada rolagem de ataque com <strong>${weapon.name}</strong>, 
-        1 unidade do item selecionado será subtraída.
-      </p>
-    </form>
-  `;
-
   new Dialog({
     title: `🏹 Vincular Munição — ${weapon.name}`,
-    content,
+    content: `
+      <form>
+        ${currentInfo}
+        <div class="form-group">
+          <label>Selecione o item de munição:</label>
+          <select id="ammo-select" style="width:100%; margin-top:4px; padding:4px;">
+            ${optionsHtml}
+          </select>
+        </div>
+        <p style="font-size:11px; color:#888; margin-top:8px;">
+          A cada ataque com <strong>${weapon.name}</strong>, 1 unidade será subtraída.
+        </p>
+      </form>
+    `,
     buttons: {
       save: {
         icon: '<i class="fas fa-check"></i>',
@@ -152,164 +145,192 @@ async function openAmmoLinkDialog(weapon) {
             if (selectedItem) {
               await weapon.setFlag(MODULE_ID, FLAG_AMMO_ID, selectedId);
               await weapon.setFlag(MODULE_ID, FLAG_AMMO_NAME, selectedItem.name);
-              ui.notifications.info(`✅ ${weapon.name} agora consome: ${selectedItem.name}`);
+              ui.notifications.info(`✅ ${weapon.name} → ${selectedItem.name}`);
             }
           } else {
             await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_ID);
             await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_NAME);
-            ui.notifications.info(`❌ Vínculo de munição removido de ${weapon.name}`);
+            ui.notifications.info(`❌ Vínculo removido de ${weapon.name}`);
           }
         },
       },
-      cancel: {
-        icon: '<i class="fas fa-times"></i>',
-        label: "Cancelar",
-      },
+      cancel: { icon: '<i class="fas fa-times"></i>', label: "Cancelar" },
     },
     default: "save",
   }).render(true);
 }
 
 // ============================================================
-// DETECÇÃO DE ATAQUES E SUBTRAÇÃO DE MUNIÇÃO
+// DETECÇÃO DE ATAQUES — HOOK PRINCIPAL
 // ============================================================
 
 Hooks.on("createChatMessage", async (message, options, userId) => {
-  if (!game.settings.get(MODULE_ID, "enabled")) return;
-  if (game.userId !== userId) return;
-
-  // ── Extrair dados do AGE System ──
-  // Estrutura real: message.flags["age-system"].ageroll.rollType
-  //                 message.flags["age-system"].ageroll.rollData.itemId
-  //                 message.flags["age-system"].ageroll.rollData.actorId (UUID)
-  const ageRoll = message.flags?.["age-system"]?.ageroll;
-  if (!ageRoll) {
-    log("Mensagem sem flags do AGE System, ignorando.");
-    return;
-  }
-
-  const rollType = ageRoll.rollType;
-  const rollData = ageRoll.rollData;
-
-  log("AGE Roll detectada:", { rollType, itemId: rollData?.itemId, actorId: rollData?.actorId });
-
-  // Verificar se é uma rolagem de ataque
-  if (!ATTACK_ROLL_TYPES.includes(rollType)) {
-    log("Tipo de rolagem não é ataque:", rollType);
-    return;
-  }
-
-  // Obter o item ID da arma
-  const weaponId = rollData?.itemId;
-  if (!weaponId) {
-    log("Rolagem de ataque sem itemId, ignorando.");
-    return;
-  }
-
-  // Obter o ator via UUID (o AGE System usa actor.uuid, não actor.id)
-  const actorUuid = rollData?.actorId;
-  if (!actorUuid) {
-    log("Rolagem sem actorId, ignorando.");
-    return;
-  }
-
-  let actor;
   try {
-    actor = await fromUuid(actorUuid);
-  } catch (e) {
-    log("Erro ao buscar ator por UUID:", actorUuid, e);
-    return;
-  }
+    // Passo 0: Módulo ativo?
+    if (!game.settings.get(MODULE_ID, "enabled")) return;
 
-  if (!actor) {
-    log("Ator não encontrado para UUID:", actorUuid);
-    return;
-  }
+    // Passo 1: Só processar no client de quem criou a mensagem
+    if (game.userId !== userId) return;
 
-  // Buscar a arma no inventário do ator
-  const weapon = actor.items.get(weaponId);
-  if (!weapon || weapon.type !== "weapon") {
-    log("Arma não encontrada no ator:", weaponId);
-    return;
-  }
+    debugNotify(`Passo 1: Mensagem detectada (id: ${message.id})`);
 
-  log(`Ataque detectado: ${actor.name} → ${weapon.name}`);
+    // Passo 2: Verificar se tem flags do AGE System
+    const allFlags = message.flags;
+    const ageFlags = allFlags?.["age-system"];
 
-  // Verificar se tem munição vinculada
-  const ammoId = weapon.getFlag(MODULE_ID, FLAG_AMMO_ID);
-  if (!ammoId) {
-    log("Nenhuma munição vinculada a", weapon.name);
-    return;
-  }
-
-  // Buscar o item de munição
-  const ammoItem = actor.items.get(ammoId);
-  if (!ammoItem) {
-    ui.notifications.warn(`⚠️ Munição vinculada a ${weapon.name} não encontrada no inventário!`);
-    await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_ID);
-    await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_NAME);
-    return;
-  }
-
-  // Ler a quantidade atual (campo: system.quantity, do template "hardItem")
-  const currentQty = ammoItem.system?.quantity;
-  if (currentQty === undefined || currentQty === null) {
-    ui.notifications.warn(`⚠️ Não foi possível ler a quantidade de ${ammoItem.name}.`);
-    log("item.system:", ammoItem.system);
-    return;
-  }
-
-  // Sem munição
-  if (currentQty <= 0) {
-    if (game.settings.get(MODULE_ID, "preventAttackNoAmmo")) {
-      ChatMessage.create({
-        content: `<div style="border:2px solid #c33; border-radius:6px; padding:8px; background:#2a1111;">
-          <strong style="color:#f66;">⚠️ SEM MUNIÇÃO!</strong><br>
-          <em>${actor.name}</em> atacou com <strong>${weapon.name}</strong>, 
-          mas não tem mais <strong>${ammoItem.name}</strong>!
-        </div>`,
-        speaker: { alias: actor.name },
-      });
+    if (!ageFlags) {
+      debugNotify("Passo 2: Sem flags 'age-system'. Não é rolagem do AGE.");
+      return;
     }
-    return;
+
+    debugNotify(`Passo 2: Flags AGE encontradas. Chaves: ${Object.keys(ageFlags).join(", ")}`);
+
+    // Passo 3: Verificar se tem ageroll
+    const ageRoll = ageFlags.ageroll;
+
+    if (!ageRoll) {
+      debugNotify(`Passo 3: Sem 'ageroll' nas flags. Chaves disponíveis: ${Object.keys(ageFlags).join(", ")}`);
+      return;
+    }
+
+    const rollType = ageRoll.rollType;
+    const rollData = ageRoll.rollData;
+
+    debugNotify(`Passo 3: rollType="${rollType}"`);
+
+    // Passo 4: Verificar se é ataque
+    if (!ATTACK_ROLL_TYPES.includes(rollType)) {
+      debugNotify(`Passo 4: Não é ataque (${rollType}). Ignorando.`);
+      return;
+    }
+
+    debugNotify("Passo 4: É um ataque!");
+
+    // Passo 5: Obter item ID
+    const weaponId = rollData?.itemId;
+    if (!weaponId) {
+      debugNotify(`Passo 5: Sem itemId no rollData. Chaves: ${rollData ? Object.keys(rollData).join(", ") : "rollData é null/undefined"}`);
+      return;
+    }
+
+    debugNotify(`Passo 5: weaponId="${weaponId}"`);
+
+    // Passo 6: Obter actor
+    const actorUuid = rollData?.actorId;
+    if (!actorUuid) {
+      debugNotify("Passo 6: Sem actorId no rollData.");
+      return;
+    }
+
+    debugNotify(`Passo 6: actorUuid="${actorUuid}"`);
+
+    let actor = await fromUuid(actorUuid);
+    // Padrão do AGE System: se fromUuid retorna TokenDocument, pegar .actor
+    actor = actor?.actor ?? actor;
+
+    if (!actor) {
+      debugNotify("Passo 6: Ator não encontrado via fromUuid.");
+      return;
+    }
+
+    debugNotify(`Passo 6: Ator encontrado: "${actor.name}"`);
+
+    // Passo 7: Buscar a arma
+    const weapon = actor.items.get(weaponId);
+    if (!weapon) {
+      debugNotify(`Passo 7: Arma não encontrada no ator. weaponId="${weaponId}"`);
+      return;
+    }
+    if (weapon.type !== "weapon") {
+      debugNotify(`Passo 7: Item encontrado mas tipo="${weapon.type}", não é weapon.`);
+      return;
+    }
+
+    debugNotify(`Passo 7: Arma encontrada: "${weapon.name}"`);
+
+    // Passo 8: Verificar vínculo de munição
+    const ammoId = weapon.getFlag(MODULE_ID, FLAG_AMMO_ID);
+    if (!ammoId) {
+      debugNotify(`Passo 8: "${weapon.name}" não tem munição vinculada.`);
+      return;
+    }
+
+    const ammoItem = actor.items.get(ammoId);
+    if (!ammoItem) {
+      ui.notifications.warn(`⚠️ Munição vinculada a ${weapon.name} não encontrada!`);
+      await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_ID);
+      await weapon.unsetFlag(MODULE_ID, FLAG_AMMO_NAME);
+      return;
+    }
+
+    debugNotify(`Passo 8: Munição vinculada: "${ammoItem.name}"`);
+
+    // Passo 9: Ler quantidade
+    const currentQty = ammoItem.system?.quantity;
+    if (currentQty === undefined || currentQty === null) {
+      debugNotify(`Passo 9: Campo 'quantity' não encontrado. system keys: ${Object.keys(ammoItem.system || {}).join(", ")}`);
+      ui.notifications.warn(`⚠️ Não foi possível ler quantidade de ${ammoItem.name}.`);
+      return;
+    }
+
+    debugNotify(`Passo 9: Quantidade atual = ${currentQty}`);
+
+    // Sem munição
+    if (currentQty <= 0) {
+      if (game.settings.get(MODULE_ID, "preventAttackNoAmmo")) {
+        ChatMessage.create({
+          content: `<div style="border:2px solid #c33; border-radius:6px; padding:8px; background:#2a1111;">
+            <strong style="color:#f66;">⚠️ SEM MUNIÇÃO!</strong><br>
+            <em>${actor.name}</em> atacou com <strong>${weapon.name}</strong>, 
+            mas não tem mais <strong>${ammoItem.name}</strong>!
+          </div>`,
+          speaker: { alias: actor.name },
+        });
+      }
+      return;
+    }
+
+    // Passo 10: SUBTRAIR!
+    const newQty = currentQty - 1;
+    await ammoItem.update({ "system.quantity": newQty });
+
+    debugNotify(`Passo 10: ✅ ${ammoItem.name} ${currentQty} → ${newQty}`);
+
+    // Mensagem no chat
+    const lowAmmoThreshold = game.settings.get(MODULE_ID, "warnLowAmmo");
+    let ammoMessage;
+
+    if (newQty <= 0) {
+      ammoMessage = `<div style="border:2px solid #c33; border-radius:6px; padding:8px; background:#2a1111;">
+        <strong style="color:#f66;">🏹 ÚLTIMA MUNIÇÃO!</strong><br>
+        <em>${actor.name}</em> usou a última <strong>${ammoItem.name}</strong> com <strong>${weapon.name}</strong>!<br>
+        <span style="color:#f99;">Restam: 0</span>
+      </div>`;
+    } else if (newQty <= lowAmmoThreshold) {
+      ammoMessage = `<div style="border:1px solid #c93; border-radius:6px; padding:8px; background:#2a2211;">
+        <strong style="color:#fc6;">🏹 Munição baixa!</strong><br>
+        <em>${actor.name}</em> usou 1× <strong>${ammoItem.name}</strong> com <strong>${weapon.name}</strong>.<br>
+        <span style="color:#fc6;">Restam: ${newQty}</span>
+      </div>`;
+    } else {
+      ammoMessage = `<div style="border:1px solid #396; border-radius:6px; padding:6px; background:#112211;">
+        🏹 <em>${actor.name}</em> usou 1× <strong>${ammoItem.name}</strong>. Restam: <strong>${newQty}</strong>
+      </div>`;
+    }
+
+    ChatMessage.create({
+      content: ammoMessage,
+      speaker: { alias: actor.name },
+    });
+
+  } catch (error) {
+    console.error(`[${MODULE_ID}] ERRO no hook createChatMessage:`, error);
+    if (DEBUG) ui.notifications.error(`[Ammo Tracker] ERRO: ${error.message}`);
   }
-
-  // SUBTRAIR 1
-  const newQty = currentQty - 1;
-  await ammoItem.update({ "system.quantity": newQty });
-
-  log(`Munição consumida: ${ammoItem.name} ${currentQty} → ${newQty}`);
-
-  // Mensagem no chat
-  const lowAmmoThreshold = game.settings.get(MODULE_ID, "warnLowAmmo");
-  let ammoMessage;
-
-  if (newQty <= 0) {
-    ammoMessage = `<div style="border:2px solid #c33; border-radius:6px; padding:8px; background:#2a1111;">
-      <strong style="color:#f66;">🏹 ÚLTIMA MUNIÇÃO!</strong><br>
-      <em>${actor.name}</em> usou a última <strong>${ammoItem.name}</strong> com <strong>${weapon.name}</strong>!<br>
-      <span style="color:#f99;">Restam: 0</span>
-    </div>`;
-  } else if (newQty <= lowAmmoThreshold) {
-    ammoMessage = `<div style="border:1px solid #c93; border-radius:6px; padding:8px; background:#2a2211;">
-      <strong style="color:#fc6;">🏹 Munição baixa!</strong><br>
-      <em>${actor.name}</em> usou 1× <strong>${ammoItem.name}</strong> com <strong>${weapon.name}</strong>.<br>
-      <span style="color:#fc6;">Restam: ${newQty}</span>
-    </div>`;
-  } else {
-    ammoMessage = `<div style="border:1px solid #396; border-radius:6px; padding:6px; background:#112211;">
-      🏹 <em>${actor.name}</em> usou 1× <strong>${ammoItem.name}</strong>. Restam: <strong>${newQty}</strong>
-    </div>`;
-  }
-
-  ChatMessage.create({
-    content: ammoMessage,
-    speaker: { alias: actor.name },
-  });
 });
 
 // ============================================================
-// COMANDO DE CHAT: /municao ou /ammo
+// COMANDO: /municao ou /ammo
 // ============================================================
 
 Hooks.on("chatMessage", (chatLog, messageText, chatData) => {
@@ -361,18 +382,3 @@ Hooks.on("chatMessage", (chatLog, messageText, chatData) => {
   ChatMessage.create({ content: report, speaker: { alias: actor.name } });
   return false;
 });
-
-// ============================================================
-// DEBUG
-// ============================================================
-
-if (DEBUG) {
-  Hooks.on("createChatMessage", (message) => {
-    console.log(`[${MODULE_ID}] === NOVA MENSAGEM ===`);
-    console.log(`[${MODULE_ID}] Speaker:`, message.speaker);
-    console.log(`[${MODULE_ID}] Flags:`, JSON.stringify(message.flags, null, 2));
-    console.log(`[${MODULE_ID}] AGE ageroll:`, message.flags?.["age-system"]?.ageroll);
-    console.log(`[${MODULE_ID}] É rolagem:`, message.isRoll);
-    console.log(`[${MODULE_ID}] ========================`);
-  });
-}
