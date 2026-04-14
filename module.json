@@ -1,0 +1,28 @@
+{
+  "id": "age-ammo-tracker",
+  "title": "AGE Provisions Tracker",
+  "description": "Sistema de acampamento e provisoes para o AGE System. Painel de descanso com niveis de conforto, contribuicoes de jogadores, consumo de racoes e cura automatica. Inclui consumo automatico de suprimentos no Breather.",
+  "version": "3.0.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "Haynex"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "age-system",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/age-ammo-tracker.js"
+  ],
+  "manifest": "https://raw.githubusercontent.com/H4yn3x/Ammo-Tracker/refs/heads/main/module.json",
+  "download": "https://github.com/H4yn3x/Ammo-Tracker/archive/refs/tags/3.0.zip"
+}
