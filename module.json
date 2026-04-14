@@ -2,7 +2,7 @@
   "id": "age-ammo-tracker",
   "title": "AGE Ammo & Resource Tracker",
   "description": "Subtrai automaticamente munição e recursos consumíveis ao usar armas no AGE System. Vincule flechas, balas ou qualquer item do inventário a uma arma, e a quantidade será subtraída a cada ataque.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "compatibility": {
     "minimum": "12",
     "verified": "13"
